@@ -2,76 +2,83 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Chess vs AI</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css"/>
+  <title>Chess vs Stockfish AI</title>
   <style>
-    body {
-      text-align: center;
-      background: #333;
-      color: white;
-      font-family: Arial, sans-serif;
-    }
-    #board {
-      width: 400px;
-      margin: 20px auto;
-    }
-    button {
-      padding: 10px;
-      font-size: 16px;
-      background: #00aaff;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0077aa;
-    }
+    body { background: #2b2b2b; color: white; font-family: sans-serif; text-align: center; }
+    #board { width: 400px; margin: 20px auto; }
+    #status { margin: 10px; }
+    button { padding: 8px 16px; font-size: 16px; }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/js/chessboard-1.0.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/css/chessboard-1.0.0.min.css" />
 </head>
 <body>
   <h1>Chess vs Stockfish AI</h1>
   <div id="board"></div>
-  <button onclick="restart()">Restart</button>
+  <div id="status"></div>
+  <button onclick="newGame()">New Game</button>
 
   <script>
-    var board, game = new Chess();
-    var stockfish = new Worker("https://raw.githubusercontent.com/niklasf/stockfish.wasm/master/src/stockfish.js");
+    const boardElement = document.getElementById("board");
+    const statusElement = document.getElementById("status");
 
-    function makeBestMove() {
-      stockfish.postMessage("position fen " + game.fen());
-      stockfish.postMessage("go depth 15");
-    }
+    let game = new Chess();
+    let board;
 
-    stockfish.onmessage = function(event) {
-      var line = event.data;
-      if (line.startsWith("bestmove")) {
-        var move = line.split(" ")[1];
-        if (move && move !== "(none)") {
-          game.move({ from: move.substring(0, 2), to: move.substring(2, 4), promotion: 'q' });
-          board.position(game.fen());
-        }
+    // Load Stockfish from CDN
+    const stockfish = new Worker("https://cdn.jsdelivr.net/gh/niklasf/stockfish.js/stockfish.wasm.js");
+
+    stockfish.onmessage = function (event) {
+      if (typeof event.data === "string" && event.data.startsWith("bestmove")) {
+        const move = event.data.split(" ")[1];
+        game.move({ from: move.substring(0, 2), to: move.substring(2, 4), promotion: 'q' });
+        board.position(game.fen());
+        updateStatus();
       }
     };
 
     function onDragStart(source, piece) {
-      if (game.game_over() || piece.search(/^b/) !== -1) return false;
+      if (game.game_over() || piece.search(/^b/) !== -1) {
+        return false;
+      }
     }
 
     function onDrop(source, target) {
-      var move = game.move({ from: source, to: target, promotion: 'q' });
-      if (move === null) return 'snapback';
-      window.setTimeout(makeBestMove, 250);
+      const move = game.move({ from: source, to: target, promotion: 'q' });
+      if (!move) return 'snapback';
+      updateStatus();
+      window.setTimeout(aiMove, 250);
+    }
+
+    function aiMove() {
+      stockfish.postMessage("position fen " + game.fen());
+      stockfish.postMessage("go depth 10");
     }
 
     function onSnapEnd() {
       board.position(game.fen());
     }
 
-    function restart() {
+    function updateStatus() {
+      let status = '';
+      if (game.in_checkmate()) {
+        status = "Game over - " + (game.turn() === 'b' ? "White wins" : "Black wins");
+      } else if (game.in_draw()) {
+        status = "Draw";
+      } else {
+        status = (game.turn() === 'w' ? "White to move" : "Black to move");
+        if (game.in_check()) {
+          status += " - Check!";
+        }
+      }
+      statusElement.innerHTML = status;
+    }
+
+    function newGame() {
       game.reset();
       board.start();
+      updateStatus();
     }
 
     board = Chessboard('board', {
@@ -81,6 +88,8 @@
       onDrop: onDrop,
       onSnapEnd: onSnapEnd
     });
+
+    updateStatus();
   </script>
 </body>
 </html>
