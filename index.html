@@ -1,94 +1,158 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Chess vs Stockfish AI</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Play Chess vs Stockfish</title>
   <style>
-    body { background: #2b2b2b; color: white; font-family: sans-serif; text-align: center; }
-    #board { width: 400px; margin: 20px auto; }
-    #status { margin: 10px; }
-    button { padding: 8px 16px; font-size: 16px; }
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: system-ui, Arial, sans-serif; display: grid; place-items: center; min-height: 100vh; background: #111; color: #eee; }
+    .app { width: min(92vw, 520px); padding: 16px; border-radius: 16px; background: #1c1c1c; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    h1 { font-size: 1.1rem; font-weight: 700; margin: 0 0 12px; letter-spacing: .2px; }
+    chess-board { width: 100%; max-width: 500px; aspect-ratio: 1 / 1; display: block; margin: 0 auto; }
+    .row { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 12px; flex-wrap: wrap; }
+    .btn { border: 0; border-radius: 10px; padding: 10px 14px; background: #2e7d32; color: white; font-weight: 700; cursor: pointer; }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .select, .input { background:#232323; color:#eee; border:1px solid #333; border-radius:10px; padding:8px 10px; }
+    #status { font-variant-numeric: tabular-nums; }
+    a { color: #7fb3ff; text-decoration: none; }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/js/chessboard-1.0.0.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/css/chessboard-1.0.0.min.css" />
+
+  <!-- Board component (no jQuery, SVG pieces built-in) -->
+  <script type="module" src="https://unpkg.com/chessboard-element?module"></script>
+  <!-- Chess rules -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"
+          integrity="sha512-1zVf86l9QfZq7iSTf1B2dZ8Yt8mL1sKQj4l0y7iP7yQb9u7mOQ0zqJ5i8Wq5tYd6b1F3x8m4sJf9wH1iH6+K9w=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
-  <h1>Chess vs Stockfish AI</h1>
-  <div id="board"></div>
-  <div id="status"></div>
-  <button onclick="newGame()">New Game</button>
+  <div class="app">
+    <h1>Play Chess vs Stockfish</h1>
+    <chess-board id="board" draggable-pieces></chess-board>
+
+    <div class="row">
+      <div id="status">Loading engine…</div>
+      <div>
+        <select id="skill" class="select" title="Skill level">
+          <option value="5">Skill 5</option>
+          <option value="10" selected>Skill 10</option>
+          <option value="15">Skill 15</option>
+          <option value="20">Skill 20</option>
+        </select>
+        <button id="new" class="btn">New Game</button>
+      </div>
+    </div>
+  </div>
 
   <script>
-    const boardElement = document.getElementById("board");
-    const statusElement = document.getElementById("status");
+    // --- Setup board + game ---
+    const board = document.getElementById('board');
+    const statusEl = document.getElementById('status');
+    const newBtn = document.getElementById('new');
+    const skillSel = document.getElementById('skill');
 
-    let game = new Chess();
-    let board;
+    const game = new Chess(); // chess.js
+    board.setAttribute('aria-label', 'Chess board');
 
-    // Load Stockfish from CDN
-    const stockfish = new Worker("https://cdn.jsdelivr.net/gh/niklasf/stockfish.js/stockfish.wasm.js");
+    // Prevent moving black pieces or playing after game end
+    board.addEventListener('drag-start', (e) => {
+      const { piece } = e.detail;                 // e.g. "wP" or "bK"
+      if (game.game_over() || piece[0] === 'b') {  // disallow if black or game over
+        e.preventDefault();
+      }
+    });
 
-    stockfish.onmessage = function (event) {
-      if (typeof event.data === "string" && event.data.startsWith("bestmove")) {
-        const move = event.data.split(" ")[1];
-        game.move({ from: move.substring(0, 2), to: move.substring(2, 4), promotion: 'q' });
-        board.position(game.fen());
+    // Handle a user move
+    board.addEventListener('drop', (e) => {
+      const { source, target, setAction } = e.detail;
+
+      const move = game.move({ from: source, to: target, promotion: 'q' });
+      if (!move) {
+        setAction('snapback');
+        return;
+      }
+
+      board.setPosition(game.fen(), true);
+      updateStatus();
+      setTimeout(aiMove, 250);
+    });
+
+    newBtn.addEventListener('click', () => {
+      game.reset();
+      board.start(true);
+      updateStatus();
+      // start with engine as Black; if you want Black to move first, call aiMove() here
+      engine.postMessage('ucinewgame');
+    });
+
+    function updateStatus(extra) {
+      let s = '';
+      if (game.in_checkmate()) s = 'Checkmate! ' + (game.turn() === 'b' ? 'White' : 'Black') + ' wins.';
+      else if (game.in_draw()) s = 'Draw.';
+      else s = (game.turn() === 'w' ? 'White' : 'Black') + ' to move.' + (game.in_check() ? ' (Check)' : '');
+      if (extra) s += ' — ' + extra;
+      statusEl.textContent = s;
+    }
+
+    // --- Stockfish engine (WASM) in a Web Worker ---
+    const engine = new Worker('https://cdn.jsdelivr.net/npm/stockfish.wasm@0.10.0/stockfish.js');
+    let engineReady = false;
+
+    engine.onmessage = (e) => {
+      const line = ('' + e.data).trim();
+
+      if (line === 'uciok' || line === 'readyok') {
+        engineReady = true;
+        statusEl.textContent = 'Ready. White to move.';
+        return;
+      }
+
+      if (line.startsWith('info')) {
+        // You can parse depth/nps here if you want to display it.
+        return;
+      }
+
+      if (line.startsWith('bestmove')) {
+        const uci = line.split(' ')[1]; // e.g. "e7e5" or "e7e8q"
+        const from = uci.slice(0, 2);
+        const to = uci.slice(2, 4);
+        const promo = uci.slice(4, 5); // might be 'q', 'r', 'b', 'n'
+        game.move({ from, to, promotion: promo || 'q' });
+        board.setPosition(game.fen(), true);
         updateStatus();
+        return;
       }
     };
 
-    function onDragStart(source, piece) {
-      if (game.game_over() || piece.search(/^b/) !== -1) {
-        return false;
-      }
+    // Initialize UCI
+    engine.postMessage('uci');
+    engine.postMessage('isready');
+
+    // Start a new game and set some human-ish options
+    function applyOptions() {
+      const skill = parseInt(skillSel.value, 10);
+      engine.postMessage('setoption name Skill Level value ' + skill);
+      engine.postMessage('setoption name UCI_LimitStrength value true');
+      engine.postMessage('setoption name UCI_Elo value ' + (800 + skill * 50)); // softer & more human-like
+      engine.postMessage('setoption name Threads value 1');
+      engine.postMessage('setoption name Ponder value false');
+      engine.postMessage('ucinewgame');
     }
 
-    function onDrop(source, target) {
-      const move = game.move({ from: source, to: target, promotion: 'q' });
-      if (!move) return 'snapback';
-      updateStatus();
-      window.setTimeout(aiMove, 250);
-    }
+    skillSel.addEventListener('change', applyOptions);
+    applyOptions();
 
     function aiMove() {
-      stockfish.postMessage("position fen " + game.fen());
-      stockfish.postMessage("go depth 10");
+      if (!engineReady) { updateStatus('engine loading…'); return; }
+      if (game.game_over()) return;
+      // Ask Stockfish for a move from current position
+      engine.postMessage('position fen ' + game.fen());
+      // Choose one: movetime (milliseconds) or depth
+      engine.postMessage('go movetime 800'); // ~0.8s per move feels human
     }
 
-    function onSnapEnd() {
-      board.position(game.fen());
-    }
-
-    function updateStatus() {
-      let status = '';
-      if (game.in_checkmate()) {
-        status = "Game over - " + (game.turn() === 'b' ? "White wins" : "Black wins");
-      } else if (game.in_draw()) {
-        status = "Draw";
-      } else {
-        status = (game.turn() === 'w' ? "White to move" : "Black to move");
-        if (game.in_check()) {
-          status += " - Check!";
-        }
-      }
-      statusElement.innerHTML = status;
-    }
-
-    function newGame() {
-      game.reset();
-      board.start();
-      updateStatus();
-    }
-
-    board = Chessboard('board', {
-      draggable: true,
-      position: 'start',
-      onDragStart: onDragStart,
-      onDrop: onDrop,
-      onSnapEnd: onSnapEnd
-    });
-
+    // Kick off initial status + position
+    board.start(false);
     updateStatus();
   </script>
 </body>
