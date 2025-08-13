@@ -1,16 +1,120 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chess Test</title>
-  <script type="module" src="https://unpkg.com/chessboard-element?module"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chess — SUPREME</title>
+
+  <!-- chessboard.js CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
+
   <style>
-    body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #333; }
-    chess-board { width: 90vmin; max-width: 500px; }
+    body { font-family: system-ui, -apple-system, Roboto, Arial; display:flex; flex-direction:column; align-items:center; gap:12px; padding:16px; }
+    #board { width: min(92vw, 540px); }
+    #status { font-weight:600; }
+    .controls { display:flex; gap:8px; }
+    button { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#fff; }
   </style>
 </head>
 <body>
-  <chess-board id="board" draggable-pieces></chess-board>
+  <h2>Cherry Krafts Chess — SUPREME</h2>
+  <div id="status">Loading...</div>
+  <div id="board"></div>
+  <div class="controls">
+    <button id="newBtn">New Game</button>
+    <button id="flipBtn">Flip Board</button>
+    <label>
+      <input type="checkbox" id="playAsWhite" checked /> Play as White
+    </label>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+
+  <script>
+    const game = new Chess();
+    let board = null;
+    let playAsWhite = true;
+
+    const statusEl = document.getElementById('status');
+    const newBtn = document.getElementById('newBtn');
+    const flipBtn = document.getElementById('flipBtn');
+    const playAsWhiteCheckbox = document.getElementById('playAsWhite');
+
+    function updateStatus() {
+      if (game.in_checkmate()) {
+        statusEl.textContent = 'Checkmate — ' + (game.turn() === 'w' ? 'Black' : 'White') + ' wins';
+      } else if (game.in_draw()) {
+        statusEl.textContent = 'Draw';
+      } else {
+        statusEl.textContent = (game.turn() === 'w' ? 'White' : 'Black') + (game.in_check() ? ' — Check' : '') + `  | FEN: ${game.fen().split(' ').slice(0,4).join(' ')}`;
+      }
+    }
+
+    const config = {
+      draggable: true,
+      position: 'start',
+      onDragStart: (source, piece, position, orientation) => {
+        // prevent moving opponent's pieces
+        if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+            (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+          return false;
+        }
+        // if user choose to play as black, invert logic
+        if (!playAsWhite) {
+          if ((game.turn() === 'w' && piece.search(/^w/) !== -1) ||
+              (game.turn() === 'b' && piece.search(/^b/) !== -1)) {
+            return false;
+          }
+        }
+      },
+      onDrop: (source, target) => {
+        const move = game.move({ from: source, to: target, promotion: 'q' });
+        if (move === null) return 'snapback';
+        updateStatus();
+        window.setTimeout(() => { if (!isGameOver()) aiMove(); }, 200);
+      },
+      onSnapEnd: () => {
+        board.position(game.fen());
+      }
+    };
+
+    function isGameOver() {
+      return game.in_checkmate() || game.in_draw() || game.in_stalemate() || game.in_threefold_repetition();
+    }
+
+    function aiMove() {
+      if (isGameOver()) return;
+      // Simple AI: choose a random legal move
+      const moves = game.moves();
+      if (moves.length === 0) return;
+      const move = moves[Math.floor(Math.random() * moves.length)];
+      game.move(move);
+      board.position(game.fen());
+      updateStatus();
+    }
+
+    function startNew() {
+      game.reset();
+      board.position('start');
+      updateStatus();
+      // If AI should move first (you chose to play as black)
+      if (!playAsWhite) {
+        window.setTimeout(aiMove, 300);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      playAsWhite = playAsWhiteCheckbox.checked;
+      playAsWhiteCheckbox.addEventListener('change', () => { playAsWhite = playAsWhiteCheckbox.checked; startNew(); });
+      board = Chessboard('board', config);
+      updateStatus();
+      newBtn.addEventListener('click', startNew);
+      flipBtn.addEventListener('click', () => board.flip());
+      // If user plays black, AI (white) moves first
+      if (!playAsWhite) window.setTimeout(aiMove, 300);
+    });
+  </script>
 </body>
 </html>
