@@ -4,53 +4,83 @@
   <meta charset="utf-8">
   <title>Chess vs AI</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/js/chessboard-1.0.0.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/css/chessboard-1.0.0.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css"/>
   <style>
-    body { text-align: center; font-family: Arial, sans-serif; }
-    #board { width: 400px; margin: 20px auto; }
-    button { padding: 10px 20px; font-size: 16px; margin-top: 10px; }
+    body {
+      text-align: center;
+      background: #333;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    #board {
+      width: 400px;
+      margin: 20px auto;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+      background: #00aaff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0077aa;
+    }
   </style>
 </head>
 <body>
-  <h1>Chess vs AI</h1>
+  <h1>Chess vs Stockfish AI</h1>
   <div id="board"></div>
-  <button onclick="resetGame()">Restart</button>
+  <button onclick="restart()">Restart</button>
 
   <script>
-    const board = Chessboard('board', {
-      draggable: true,
-      position: 'start',
-      onDrop: onDrop
-    });
+    var board, game = new Chess();
+    var stockfish = new Worker("https://raw.githubusercontent.com/niklasf/stockfish.wasm/master/src/stockfish.js");
 
-    const game = new Chess();
-    const stockfish = new Worker("https://cdn.jsdelivr.net/gh/niklasf/stockfish.js/stockfish.js");
-
-    function aiMove() {
+    function makeBestMove() {
       stockfish.postMessage("position fen " + game.fen());
       stockfish.postMessage("go depth 15");
     }
 
-    stockfish.onmessage = function (event) {
-      const message = event.data;
-      if (message.startsWith("bestmove")) {
-        const move = message.split(" ")[1];
-        game.move({ from: move.substring(0, 2), to: move.substring(2, 4), promotion: 'q' });
-        board.position(game.fen());
+    stockfish.onmessage = function(event) {
+      var line = event.data;
+      if (line.startsWith("bestmove")) {
+        var move = line.split(" ")[1];
+        if (move && move !== "(none)") {
+          game.move({ from: move.substring(0, 2), to: move.substring(2, 4), promotion: 'q' });
+          board.position(game.fen());
+        }
       }
     };
 
-    function onDrop(source, target) {
-      const move = game.move({ from: source, to: target, promotion: 'q' });
-      if (move === null) return 'snapback';
-      aiMove();
+    function onDragStart(source, piece) {
+      if (game.game_over() || piece.search(/^b/) !== -1) return false;
     }
 
-    function resetGame() {
+    function onDrop(source, target) {
+      var move = game.move({ from: source, to: target, promotion: 'q' });
+      if (move === null) return 'snapback';
+      window.setTimeout(makeBestMove, 250);
+    }
+
+    function onSnapEnd() {
+      board.position(game.fen());
+    }
+
+    function restart() {
       game.reset();
       board.start();
     }
+
+    board = Chessboard('board', {
+      draggable: true,
+      position: 'start',
+      onDragStart: onDragStart,
+      onDrop: onDrop,
+      onSnapEnd: onSnapEnd
+    });
   </script>
 </body>
 </html>
