@@ -1,225 +1,169 @@
-<!doctype html>
+<!--
+Simple GitHub Pages Website (single-file)
+File: index.html
+
+How to use:
+1. Create a new GitHub repository (e.g., username.github.io or any repo for project site).
+   - For a user/organization site use repo name: <your-github-username>.github.io
+2. Add this index.html to the repository root (or to /docs for project site).
+3. Commit & push.
+4. Enable Pages in repository settings (branch: main or gh-pages; folder: root or /docs).
+   - For user site, GitHub serves automatically from the main branch root for repo named username.github.io.
+
+Quick git commands:
+  git init
+  git add index.html
+  git commit -m "Initial site"
+  git branch -M main
+  git remote add origin https://github.com/<username>/<repo>.git
+  git push -u origin main
+
+Replace <username> and <repo> accordingly.
+
+Customization notes:
+- Change the site title in the <title> and the hero section.
+- Replace project cards with your repository links or demo links.
+- Add images by creating an /assets folder and updating the <img> src.
+- To use a custom domain, add a CNAME file with your domain and configure DNS.
+
+This single-file site is responsive, accessible, and easy to edit. Copy-paste into your repo root and you're good to go.
+--><!doctype html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Simple Chess — SUPREME</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- chessboard.js CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/css/chessboard-1.0.0.min.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>My GitHub Pages Site</title>
+  <meta name="description" content="A clean, single-file GitHub Pages template.">
+  <meta name="author" content="Your Name">
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; display:flex; gap:24px; padding:24px; }
-    .board-wrap { width: 480px; }
-    .controls { max-width: 420px; }
-    .board-container { box-shadow: 0 8px 20px rgba(0,0,0,0.12); border-radius:8px; overflow:hidden; }
-    button { padding:8px 12px; margin:6px 6px 6px 0; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer; }
-    button:active { transform:translateY(1px); }
-    .moves { white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:8px; min-height:120px; }
-    header h1 { margin:0 0 12px 0; font-size:20px; }
-    .small { font-size:13px; color:#666; margin-bottom:12px; }
-    .status { margin:8px 0; font-weight:600; }
-    .option { margin:8px 0; }
-    label { margin-right:8px; }
+    /* Minimal, modern CSS - single-file */
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#60a5fa; --muted:#94a3b8; --glass: rgba(255,255,255,0.03);
+      --radius:12px; --maxw:1000px; --gap:18px; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071026 0%, #081226 60%);color:#e6eef8}
+    .wrap{max-width:var(--maxw);margin:36px auto;padding:28px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:18px;box-shadow:0 10px 30px rgba(2,6,23,0.6)}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:48px;height:48px;border-radius:10px;background:var(--glass);display:grid;place-items:center;font-weight:700}
+    h1{font-size:1.4rem;margin:0}
+    nav{display:flex;gap:12px}
+    a.btn{padding:8px 12px;border-radius:10px;text-decoration:none;color:inherit;font-weight:600;border:1px solid rgba(255,255,255,0.04)}
+    .hero{display:grid;grid-template-columns:1fr 320px;gap:24px;margin-top:20px;align-items:start}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));padding:18px;border-radius:var(--radius);box-shadow:inset 0 1px 0 rgba(255,255,255,0.02)}
+    .lead{color:var(--muted);margin-top:8px}
+    .projects{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
+    .project{padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.02)}
+    .footer{margin-top:24px;text-align:center;color:var(--muted);font-size:0.9rem}
+    .tools{display:flex;gap:8px;flex-wrap:wrap}
+    .pill{padding:6px 10px;border-radius:999px;font-size:0.85rem;border:1px solid rgba(255,255,255,0.03)}
+    .contact-form{display:grid;gap:8px}
+    input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    button{padding:10px 12px;border-radius:10px;border:none;background:var(--accent);color:#042444;font-weight:700}
+    @media (max-width:880px){
+      .hero{grid-template-columns:1fr;}
+      .projects{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
-  <div class="board-wrap">
-    <div class="board-container" id="board" style="width:100%"></div>
-  </div>
-
-  <div class="controls">
+  <div class="wrap" role="main">
     <header>
-      <h1>Simple Chess — SUPREME</h1>
-      <div class="small">Play locally, undo, flip board. AI is a simple JS opponent (random legal move).</div>
-    </header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">GK</div>
+        <div>
+          <h1 id="site-title">Cherry Krafts — Projects & Demos</h1>
+          <div class="lead">A clean GitHub Pages starter site — lightweight and easy to customize.</div>
+        </div>
+      </div>
+      <nav aria-label="Primary">
+        <a class="btn" href="#projects">Projects</a>
+        <a class="btn" href="#about">About</a>
+        <a class="btn" href="#contact">Contact</a>
+      </nav>
+    </header><section class="hero" aria-labelledby="site-title">
+  <div>
+    <div class="card">
+      <h2>Ship your work — fast</h2>
+      <p class="lead">Use this template to showcase repositories, demos, videos, and live projects. Edit the content, replace cards with your repositories, and push to GitHub.</p>
 
-    <div class="status" id="status">Ready</div>
+      <div class="tools" style="margin-top:12px;">
+        <span class="pill">HTML</span>
+        <span class="pill">CSS</span>
+        <span class="pill">GitHub Pages</span>
+        <span class="pill">Responsive</span>
+      </div>
 
-    <div class="option">
-      <label><input type="radio" name="mode" value="local" checked> Local 2-player</label>
-      <label><input type="radio" name="mode" value="ai"> Play vs AI</label>
+      <div style="margin-top:14px;">
+        <strong>Quick tips</strong>
+        <ul style="margin:8px 0 0 18px;color:var(--muted)">
+          <li>Put images in <code>/assets</code> and reference them.</li>
+          <li>Link projects to live demos or repository pages.</li>
+          <li>For blog-style updates, add Markdown files converted to HTML or use Jekyll.</li>
+        </ul>
+      </div>
     </div>
 
-    <div>
-      <button id="undoBtn">Undo</button>
-      <button id="restartBtn">Restart</button>
-      <button id="flipBtn">Flip Board</button>
-      <button id="hintBtn">Hint (random)</button>
-    </div>
+    <div id="projects" class="projects" style="margin-top:14px">
+      <article class="project">
+        <h3>Project 1 — Demo</h3>
+        <p class="lead">Short blurb about project 1. Add a link below to view the repo or live demo.</p>
+        <p style="margin-top:10px"><a class="btn" href="#">View Repo</a></p>
+      </article>
 
-    <h3>Move history</h3>
-    <div class="moves" id="moves">— no moves —</div>
+      <article class="project">
+        <h3>Project 2 — Demo</h3>
+        <p class="lead">Short blurb about project 2. Replace this card with your project information.</p>
+        <p style="margin-top:10px"><a class="btn" href="#">View Repo</a></p>
+      </article>
 
-    <div style="margin-top:12px; color:#555; font-size:13px;">
-      Want a stronger AI or real Stockfish? I can add that next (WebAssembly). Want online play? I can show Firebase/WebSocket steps.
     </div>
   </div>
 
-  <!-- Libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/js/chessboard-1.0.0.min.js"></script>
+  <aside style="width:100%" aria-labelledby="about">
+    <div class="card">
+      <h3 id="about">About this site</h3>
+      <p class="lead">This is a minimal starter to get your GitHub Pages site live quickly. Perfect for portfolios, project showcases, and student pages.</p>
 
-  <script>
-    // Initialize game state
-    const game = new Chess(); // chess.js
-    let board = null;
-    let boardOrientation = 'white';
-    const statusEl = document.getElementById('status');
-    const movesEl = document.getElementById('moves');
+      <h4 style="margin-top:12px">Contact</h4>
+      <form id="contact" class="contact-form" onsubmit="handleContact(event)">
+        <input type="text" id="name" placeholder="Your name" required>
+        <input type="email" id="email" placeholder="Email" required>
+        <textarea id="message" rows="4" placeholder="Message (optional)"></textarea>
+        <button type="submit">Send (demo)</button>
+      </form>
 
-    // Options
-    function getMode(){ return document.querySelector('input[name="mode"]:checked').value; }
+      <div style="margin-top:12px;color:var(--muted);font-size:0.9rem">
+        Note: This demo contact form uses client-side code only. Replace with Formspree, Netlify Forms, or server endpoint to receive messages.
+      </div>
+    </div>
 
-    // Update status & move list
-    function updateStatus() {
-      let status = '';
-      const turn = game.turn() === 'w' ? 'White' : 'Black';
+    <div class="card" style="margin-top:12px">
+      <h4>Deployment</h4>
+      <ol style="margin:8px 0 0 18px;color:var(--muted)">
+        <li>Push this file to your repo root (or to /docs for project site).</li>
+        <li>Enable GitHub Pages in Settings → Pages → Branch: main, Folder: / (root) or /docs.</li>
+        <li>Visit the published URL shown in Settings (or <code>https://&lt;username&gt;.github.io/&lt;repo&gt;/</code>).</li>
+      </ol>
+    </div>
+  </aside>
+</section>
 
-      if (game.in_checkmate()) {
-        status = `Checkmate — ${turn === 'White' ? 'Black' : 'White'} wins!`;
-      } else if (game.in_draw()) {
-        status = 'Draw';
-      } else {
-        status = `${turn} to move` + (game.in_check() ? ' — check!' : '');
-      }
-      statusEl.textContent = status;
-      const history = game.history({ verbose: true });
-      if (history.length === 0) {
-        movesEl.textContent = '— no moves —';
-      } else {
-        // Format as SAN pairs
-        let out = '';
-        for (let i = 0; i < history.length; i += 2) {
-          const moveNo = Math.floor(i/2) + 1;
-          const w = history[i] ? history[i].san : '';
-          const b = history[i+1] ? history[i+1].san : '';
-          out += `${moveNo}. ${w}${b ? '  ' + b : ''}\n`;
-        }
-        movesEl.textContent = out.trim();
-      }
+<footer class="footer">
+  <div>Made with ❤️ — Customize this template and make it yours.</div>
+  <div style="margin-top:8px;color:var(--muted)">If you want, I can generate a README.md, LICENSE, or a full repo structure for you.</div>
+</footer>
+
+  </div>  <script>
+    // Small demo-only JS
+    function handleContact(e){
+      e.preventDefault();
+      const name = document.getElementById('name').value || 'Friend';
+      alert('Thanks, ' + name + '! This is a demo — replace with a real form endpoint to receive messages.');
+      e.target.reset();
     }
-
-    // Make move on board + game
-    function makeMove(from, to, promotion) {
-      const move = game.move({ from, to, promotion });
-      if (move === null) return false;
-      board.position(game.fen());
-      updateStatus();
-      return true;
-    }
-
-    // Simple AI: choose a random legal move
-    function aiMove() {
-      if (game.game_over()) return;
-      const moves = game.moves();
-      if (moves.length === 0) return;
-      // pick random move (SAN) and play it
-      const chosenSAN = moves[Math.floor(Math.random() * moves.length)];
-      game.move(chosenSAN);
-      board.position(game.fen());
-      updateStatus();
-    }
-
-    // Hint: returns a random legal move in UCI-like form
-    function randomHint() {
-      const moves = game.moves({ verbose: true });
-      if (moves.length === 0) return null;
-      const m = moves[Math.floor(Math.random() * moves.length)];
-      return `${m.from}-${m.to}` + (m.promotion ? `=${m.promotion}` : '');
-    }
-
-    // chessboard.js callbacks
-    const cfg = {
-      draggable: true,
-      position: 'start',
-      orientation: boardOrientation,
-      onDragStart: function(source, piece, position, orientation) {
-        // Block dragging if game over or not player's turn in AI mode
-        if (game.game_over()) return false;
-        if (getMode() === 'ai') {
-          // If AI plays black, block black piece moves when it's black's turn
-          const turn = game.turn() === 'w' ? 'w' : 'b';
-          if ((turn === 'w' && piece.search(/^b/) !== -1) || (turn === 'b' && piece.search(/^w/) !== -1)) {
-            // allow white player only when it's their turn (AI will play other side)
-            // In this simple setup assume human plays White by default; can flip orientation for human as desired.
-            // We'll allow human to move their side only: if human's color != piece color, block
-            if (turn === 'b') return false;
-          }
-        }
-      },
-      onDrop: function(source, target, piece, newPos, oldPos, orientation) {
-        // try move
-        // handle promotion simple by auto-promoting to queen if needed
-        let promotion = 'q';
-        const move = game.move({ from: source, to: target, promotion });
-        if (move === null) {
-          return 'snapback';
-        } else {
-          board.position(game.fen());
-          updateStatus();
-          // If mode is AI and it's now AI's turn, let AI move
-          if (getMode() === 'ai' && !game.game_over()) {
-            // small delay so user sees the move
-            setTimeout(() => aiMove(), 250);
-          }
-        }
-      },
-      onSnapEnd: function() { board.position(game.fen()); }
-    };
-
-    board = Chessboard('board', cfg);
-    updateStatus();
-
-    // Buttons
-    document.getElementById('undoBtn').addEventListener('click', () => {
-      // Undo last two half-moves if vs AI (so AI undo + your undo) else undo one
-      if (getMode() === 'ai') {
-        game.undo(); // AI or user's last half-move
-        game.undo(); // user's previous half-move
-      } else {
-        game.undo();
-      }
-      board.position(game.fen());
-      updateStatus();
-    });
-
-    document.getElementById('restartBtn').addEventListener('click', () => {
-      game.reset();
-      board.start();
-      updateStatus();
-    });
-
-    document.getElementById('flipBtn').addEventListener('click', () => {
-      board.flip();
-      boardOrientation = boardOrientation === 'white' ? 'black' : 'white';
-    });
-
-    document.getElementById('hintBtn').addEventListener('click', () => {
-      const h = randomHint();
-      if (!h) statusEl.textContent = 'No moves available';
-      else statusEl.textContent = `Hint: ${h}`;
-    });
-
-    // If user switches mode while mid-game, just restart for clarity
-    document.querySelectorAll('input[name="mode"]').forEach(r => {
-      r.addEventListener('change', () => {
-        game.reset();
-        board.start();
-        updateStatus();
-      });
-    });
-
-    // Optional: keyboard shortcuts
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'u') document.getElementById('undoBtn').click();
-      if (e.key === 'r') document.getElementById('restartBtn').click();
-      if (e.key === 'f') document.getElementById('flipBtn').click();
-    });
-
-    // Resize handling (responsive)
-    window.addEventListener('resize', () => {
-      // chessboard.js handles itself, but re-render to be safe
-      board.resize();
-    });
-  </script>
-</body>
+  </script></body>
 </html>
