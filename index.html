@@ -1,95 +1,224 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
+  <title>Simple Chess — SUPREME</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Chess — SUPREME</title>
-
-  <!-- Chessboard.js CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/www/css/chessboard-1.0.0.min.css" />
-
+  <!-- chessboard.js CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/css/chessboard-1.0.0.min.css" />
   <style>
-    body { font-family: sans-serif; display:flex; flex-direction:column; align-items:center; gap:12px; padding:16px; }
-    #board { width: min(92vw, 540px); }
-    #status { font-weight:600; }
-    .controls { display:flex; gap:8px; }
-    button { padding:8px 12px; border-radius:8px; border:1px solid #ccc; background:#fff; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; display:flex; gap:24px; padding:24px; }
+    .board-wrap { width: 480px; }
+    .controls { max-width: 420px; }
+    .board-container { box-shadow: 0 8px 20px rgba(0,0,0,0.12); border-radius:8px; overflow:hidden; }
+    button { padding:8px 12px; margin:6px 6px 6px 0; border-radius:6px; border:1px solid #ddd; background:#fff; cursor:pointer; }
+    button:active { transform:translateY(1px); }
+    .moves { white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:8px; min-height:120px; }
+    header h1 { margin:0 0 12px 0; font-size:20px; }
+    .small { font-size:13px; color:#666; margin-bottom:12px; }
+    .status { margin:8px 0; font-weight:600; }
+    .option { margin:8px 0; }
+    label { margin-right:8px; }
   </style>
 </head>
 <body>
-  <h2>Cherry Krafts Chess — SUPREME</h2>
-  <div id="status">Loading...</div>
-  <div id="board"></div>
+  <div class="board-wrap">
+    <div class="board-container" id="board" style="width:100%"></div>
+  </div>
+
   <div class="controls">
-    <button id="newBtn">New Game</button>
-    <button id="flipBtn">Flip Board</button>
-    <label><input type="checkbox" id="playAsWhite" checked /> Play as White</label>
+    <header>
+      <h1>Simple Chess — SUPREME</h1>
+      <div class="small">Play locally, undo, flip board. AI is a simple JS opponent (random legal move).</div>
+    </header>
+
+    <div class="status" id="status">Ready</div>
+
+    <div class="option">
+      <label><input type="radio" name="mode" value="local" checked> Local 2-player</label>
+      <label><input type="radio" name="mode" value="ai"> Play vs AI</label>
+    </div>
+
+    <div>
+      <button id="undoBtn">Undo</button>
+      <button id="restartBtn">Restart</button>
+      <button id="flipBtn">Flip Board</button>
+      <button id="hintBtn">Hint (random)</button>
+    </div>
+
+    <h3>Move history</h3>
+    <div class="moves" id="moves">— no moves —</div>
+
+    <div style="margin-top:12px; color:#555; font-size:13px;">
+      Want a stronger AI or real Stockfish? I can add that next (WebAssembly). Want online play? I can show Firebase/WebSocket steps.
+    </div>
   </div>
 
   <!-- Libraries -->
-  <script src="https://unpkg.com/chess.js@0.13.4/chess.min.js"></script>
-  <script src="https://unpkg.com/chessboardjs@1.0.0/www/js/chessboard-1.0.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/js/chessboard-1.0.0.min.js"></script>
 
   <script>
-    const game = new Chess();
+    // Initialize game state
+    const game = new Chess(); // chess.js
     let board = null;
-    let playAsWhite = true;
+    let boardOrientation = 'white';
     const statusEl = document.getElementById('status');
+    const movesEl = document.getElementById('moves');
 
+    // Options
+    function getMode(){ return document.querySelector('input[name="mode"]:checked').value; }
+
+    // Update status & move list
     function updateStatus() {
       let status = '';
+      const turn = game.turn() === 'w' ? 'White' : 'Black';
+
       if (game.in_checkmate()) {
-        status = 'Checkmate — ' + (game.turn() === 'w' ? 'Black' : 'White') + ' wins';
+        status = `Checkmate — ${turn === 'White' ? 'Black' : 'White'} wins!`;
       } else if (game.in_draw()) {
         status = 'Draw';
       } else {
-        status = (game.turn() === 'w' ? 'White' : 'Black') + (game.in_check() ? ' — Check' : '');
+        status = `${turn} to move` + (game.in_check() ? ' — check!' : '');
       }
       statusEl.textContent = status;
+      const history = game.history({ verbose: true });
+      if (history.length === 0) {
+        movesEl.textContent = '— no moves —';
+      } else {
+        // Format as SAN pairs
+        let out = '';
+        for (let i = 0; i < history.length; i += 2) {
+          const moveNo = Math.floor(i/2) + 1;
+          const w = history[i] ? history[i].san : '';
+          const b = history[i+1] ? history[i+1].san : '';
+          out += `${moveNo}. ${w}${b ? '  ' + b : ''}\n`;
+        }
+        movesEl.textContent = out.trim();
+      }
     }
 
+    // Make move on board + game
+    function makeMove(from, to, promotion) {
+      const move = game.move({ from, to, promotion });
+      if (move === null) return false;
+      board.position(game.fen());
+      updateStatus();
+      return true;
+    }
+
+    // Simple AI: choose a random legal move
     function aiMove() {
       if (game.game_over()) return;
       const moves = game.moves();
-      const move = moves[Math.floor(Math.random() * moves.length)];
-      game.move(move);
+      if (moves.length === 0) return;
+      // pick random move (SAN) and play it
+      const chosenSAN = moves[Math.floor(Math.random() * moves.length)];
+      game.move(chosenSAN);
       board.position(game.fen());
       updateStatus();
     }
 
-    function startNew() {
-      game.reset();
-      board.position('start');
-      updateStatus();
-      if (!playAsWhite) setTimeout(aiMove, 500);
+    // Hint: returns a random legal move in UCI-like form
+    function randomHint() {
+      const moves = game.moves({ verbose: true });
+      if (moves.length === 0) return null;
+      const m = moves[Math.floor(Math.random() * moves.length)];
+      return `${m.from}-${m.to}` + (m.promotion ? `=${m.promotion}` : '');
     }
 
-    const config = {
+    // chessboard.js callbacks
+    const cfg = {
       draggable: true,
       position: 'start',
-      onDragStart: (source, piece) => {
-        if ((game.turn() === 'w' && piece.startsWith('b')) ||
-            (game.turn() === 'b' && piece.startsWith('w'))) return false;
+      orientation: boardOrientation,
+      onDragStart: function(source, piece, position, orientation) {
+        // Block dragging if game over or not player's turn in AI mode
+        if (game.game_over()) return false;
+        if (getMode() === 'ai') {
+          // If AI plays black, block black piece moves when it's black's turn
+          const turn = game.turn() === 'w' ? 'w' : 'b';
+          if ((turn === 'w' && piece.search(/^b/) !== -1) || (turn === 'b' && piece.search(/^w/) !== -1)) {
+            // allow white player only when it's their turn (AI will play other side)
+            // In this simple setup assume human plays White by default; can flip orientation for human as desired.
+            // We'll allow human to move their side only: if human's color != piece color, block
+            if (turn === 'b') return false;
+          }
+        }
       },
-      onDrop: (source, target) => {
-        const move = game.move({ from: source, to: target, promotion: 'q' });
-        if (!move) return 'snapback';
-        updateStatus();
-        setTimeout(aiMove, 300);
+      onDrop: function(source, target, piece, newPos, oldPos, orientation) {
+        // try move
+        // handle promotion simple by auto-promoting to queen if needed
+        let promotion = 'q';
+        const move = game.move({ from: source, to: target, promotion });
+        if (move === null) {
+          return 'snapback';
+        } else {
+          board.position(game.fen());
+          updateStatus();
+          // If mode is AI and it's now AI's turn, let AI move
+          if (getMode() === 'ai' && !game.game_over()) {
+            // small delay so user sees the move
+            setTimeout(() => aiMove(), 250);
+          }
+        }
       },
-      onSnapEnd: () => board.position(game.fen())
+      onSnapEnd: function() { board.position(game.fen()); }
     };
 
-    document.getElementById('newBtn').addEventListener('click', startNew);
-    document.getElementById('flipBtn').addEventListener('click', () => board.flip());
-    document.getElementById('playAsWhite').addEventListener('change', e => {
-      playAsWhite = e.target.checked;
-      startNew();
+    board = Chessboard('board', cfg);
+    updateStatus();
+
+    // Buttons
+    document.getElementById('undoBtn').addEventListener('click', () => {
+      // Undo last two half-moves if vs AI (so AI undo + your undo) else undo one
+      if (getMode() === 'ai') {
+        game.undo(); // AI or user's last half-move
+        game.undo(); // user's previous half-move
+      } else {
+        game.undo();
+      }
+      board.position(game.fen());
+      updateStatus();
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
-      board = Chessboard('board', config);
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      game.reset();
+      board.start();
       updateStatus();
+    });
+
+    document.getElementById('flipBtn').addEventListener('click', () => {
+      board.flip();
+      boardOrientation = boardOrientation === 'white' ? 'black' : 'white';
+    });
+
+    document.getElementById('hintBtn').addEventListener('click', () => {
+      const h = randomHint();
+      if (!h) statusEl.textContent = 'No moves available';
+      else statusEl.textContent = `Hint: ${h}`;
+    });
+
+    // If user switches mode while mid-game, just restart for clarity
+    document.querySelectorAll('input[name="mode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        game.reset();
+        board.start();
+        updateStatus();
+      });
+    });
+
+    // Optional: keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'u') document.getElementById('undoBtn').click();
+      if (e.key === 'r') document.getElementById('restartBtn').click();
+      if (e.key === 'f') document.getElementById('flipBtn').click();
+    });
+
+    // Resize handling (responsive)
+    window.addEventListener('resize', () => {
+      // chessboard.js handles itself, but re-render to be safe
+      board.resize();
     });
   </script>
 </body>
